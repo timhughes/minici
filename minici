@@ -10,7 +10,7 @@
 #
 #     bundle exec ./minici
 
-type inotifywait || echo "inotify-tools is not installed"
+type inotifywait || echo "inotify-tools is not installed" && exit 1
 
 while true
 do
