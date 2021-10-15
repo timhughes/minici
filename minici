@@ -18,7 +18,7 @@ _RED=$(tput setaf 1)
 _RESET=$(tput sgr0)
 _BOLD=$(tput bold)
 
-EXCLUDE_REGEX='^\..*\.sw[px]*$|4913|~$|.git/.*\.lock$|.*i\.log$|spec/fixtures|build|_trial_temp*'
+EXCLUDE_REGEX='^\..*\.sw[px]*$|4913|~$|.git/.*\.lock$|.*i\.log$|spec/fixtures|build|_trial_temp*|.pytest_cache'
 
 
 while true
