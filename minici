@@ -1,4 +1,35 @@
 #! /bin/sh
+# vim: set ft=sh ts=4 sw=4 tw=120 et :
+#
+# minici
+# Copyright (C) 2015 Tim Hughes <thughes@thegoldfish.org>
+#
+# Distributed under terms of the MIT license.
+#
+# Simple test runner that watches for changes and run whatever you type after
+# Can be run with Bundler:
+#
+#     bundle exec ./minici
+
+#type inotifywait || echo "inotify-tools is not installed" && exit 1
+
+_GREEN=$(tput setaf 2)
+_BLUE=$(tput setaf 4)
+_RED=$(tput setaf 1)
+_RESET=$(tput sgr0)
+_BOLD=$(tput bold)
+
+EXCLUDE_REGEX='^\..*\.sw[px]*$|4913|~$|.git/.*\.lock$|.*i\.log$|spec/fixtures|build|_trial_temp*'
+
+
+while true
+do
+    EVENT=$(inotifywait --quiet --format '%w%f' --recursive --event 'close_write' --exclude $EXCLUDE_REGEX . 2>/dev/null)
+    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
+    printf "Run triggered:\n${_GREEN}$EVENT${_RESET}\n"
+    sleep 1
+    $@
+done#! /bin/sh
 #
 # minici
 # Copyright (C) 2015 Tim Hughes <thughes@thegoldfish.org>
