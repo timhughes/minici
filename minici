@@ -21,20 +21,19 @@ _BOLD=$(tput bold)
 STALE_EVENT_SECS=1
 EXCLUDE_REGEX='^\..*\.sw[px]*$|4913|~$|.git/.*\.lock$|.*i\.log$|spec/fixtures|build|_trial_temp*|.pytest_cache|.watchman-cookie|^build|.coverage.*|.attach_pid*|_apidoc'
 
-inotifywait --event close_write --monitor --recursive --timefmt "%Y-%m-%dT%H:%M:%S" --format "%T %e %w %f" . |
-  while read -r event_time events directory filename; do
-    # ignore events older than  second
-    if [[ $(( $(date +%s) - $(date -d "${event_time}" +%s))) -ge ${STALE_EVENT_SECS} ]] ; then
-        continue
-    fi
-    clear && printf '\e[3J' # clear screen on mac
-    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
-    echo "event_time events directory filename: \"${event_time}\" \"${events}\" \"${directory}\" \"${filename}\""
-    if ! echo "$directory" | grep -Eq '^\.\/\.git' &&
-       ! git check-ignore --non-matching --verbose "${directory}/${filename}" >/dev/null 2>&1
-    then
-      echo 'will build'
-      sleep 1
-      $@
-    fi
-  done
+inotifywait --event close_write --monitor --recursive --timefmt "%Y-%m-%dT%H:%M:%S" --format "%T %e %w %f" --exclude "${EXCLUDE_REGEX}" . |
+	while read -r event_time events directory filename; do
+		# ignore events older than  second
+		if [[ $(($(date +%s) - $(date -d "${event_time}" +%s))) -ge ${STALE_EVENT_SECS} ]]; then
+			continue
+		fi
+		if ! echo "$directory" | grep -Eq '^\.\/\.git' &&
+			! git check-ignore --non-matching --verbose "${directory}/${filename}" >/dev/null 2>&1; then
+			clear && printf '\e[3J' # clear screen on mac
+			printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
+			echo "event_time events directory filename: \"${event_time}\" \"${events}\" \"${directory}\" \"${filename}\""
+			echo 'will build'
+			sleep 1
+			$@
+		fi
+	done
