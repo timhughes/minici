@@ -9,6 +9,11 @@
 # Simple test runner that watches for changes and executes all arguments
 #
 #     ./minici pytest
+#
+#
+# inotify-tools for AL2 
+# 
+#    sudo yum install https://archives.fedoraproject.org/pub/archive/epel/7/x86_64/Packages/i/inotify-tools-3.14-9.el7.x86_64.rpm
 
 #type inotifywait || echo "inotify-tools is not installed" && exit 1
 
