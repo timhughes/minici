@@ -15,16 +15,42 @@
 # 
 #    sudo yum install https://archives.fedoraproject.org/pub/archive/epel/7/x86_64/Packages/i/inotify-tools-3.14-9.el7.x86_64.rpm
 
-type inotifywait >/dev/null 2>&1 || { echo "inotify-tools is not installed" >&2; exit 1; }
-
 _GREEN=$(tput setaf 2)
 _BLUE=$(tput setaf 4)
 _RED=$(tput setaf 1)
 _RESET=$(tput sgr0)
 _BOLD=$(tput bold)
 
+if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
+	echo "Usage: $0 <command> [args...]"
+	echo ""
+	echo "A simple file watcher that runs commands when files change."
+	echo ""
+	echo "Examples:"
+	echo "  $0 pytest"
+	echo "  $0 npm test"
+	echo "  $0 python -m unittest"
+	echo ""
+	echo "Options:"
+	echo "  -h, --help    Show this help message"
+	echo ""
+	echo "For more information: https://github.com/timhughes/minici"
+	exit 1
+fi
+
+if ! command -v inotifywait >/dev/null 2>&1; then
+	echo "${_RED}inotify-tools is not installed${_RESET}" >&2
+	exit 1
+fi
+
+# Check if the command exists before starting to watch
+if ! command -v "$1" >/dev/null 2>&1; then
+	echo "${_RED}Command not found: $1${_RESET}" >&2
+	exit 1
+fi
+
 STALE_EVENT_SECS=1
-EXCLUDE_REGEX='^\..*\.sw[px]*$|4913|~$|.git/.*\.lock$|.*i\.log$|spec/fixtures|build|_trial_temp*|.pytest_cache|.watchman-cookie|^build|.coverage.*|.attach_pid*|_apidoc'
+EXCLUDE_REGEX='^\..*\.sw[px]*$|.*i\.log$|spec/fixtures|_trial_temp*|.pytest_cache|.watchman-cookie|^build|.coverage.*|.attach_pid*|_apidoc'
 
 inotifywait --event close_write --monitor --recursive --timefmt "%Y-%m-%dT%H:%M:%S" --format "%T %e %w %f" --exclude "${EXCLUDE_REGEX}" . |
 	while read -r event_time events directory filename; do
@@ -36,11 +62,19 @@ inotifywait --event close_write --monitor --recursive --timefmt "%Y-%m-%dT%H:%M:
 			git check-ignore "${directory}/${filename}" >/dev/null 2>&1; then
 			continue
 		fi
-		clear
-		printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
+		cols=${COLUMNS:-$(tput cols)}
+		title=" minici "
+		padding=$(( (cols - ${#title}) / 2 ))
+		printf '%*s' $padding '' | tr ' ' =
+		printf '%s' "$title"
+		printf '%*s\n' $((cols - padding - ${#title})) '' | tr ' ' =
 		echo "${_BLUE}File changed:${_RESET} ${directory}${filename}"
 		echo "${_BLUE}Time:${_RESET} $(date -Iseconds)"
 		echo "${_GREEN}Running:${_RESET} $*"
 		printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
 		"$@"
+		exit_code=$?
+		if [[ $exit_code -ne 0 ]]; then
+			echo "${_RED}Command failed with exit code: $exit_code${_RESET}"
+		fi
 	done
