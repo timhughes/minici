@@ -15,11 +15,11 @@
 # 
 #    sudo yum install https://archives.fedoraproject.org/pub/archive/epel/7/x86_64/Packages/i/inotify-tools-3.14-9.el7.x86_64.rpm
 
-_GREEN=$(tput setaf 2)
-_BLUE=$(tput setaf 4)
-_RED=$(tput setaf 1)
-_RESET=$(tput sgr0)
-_BOLD=$(tput bold)
+_GREEN=$(tput setaf 2 2>/dev/null || echo '')
+_BLUE=$(tput setaf 4 2>/dev/null || echo '')
+_RED=$(tput setaf 1 2>/dev/null || echo '')
+_RESET=$(tput sgr0 2>/dev/null || echo '')
+_BOLD=$(tput bold 2>/dev/null || echo '')
 
 if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
 	echo "Usage: $0 <command> [args...]"
@@ -53,7 +53,7 @@ STALE_EVENT_SECS=1
 EXCLUDE_REGEX='^\..*\.sw[px]*$|.*i\.log$|spec/fixtures|_trial_temp*|.pytest_cache|.watchman-cookie|^build|.coverage.*|.attach_pid*|_apidoc'
 
 inotifywait --event close_write --monitor --recursive --timefmt "%Y-%m-%dT%H:%M:%S" --format "%T %e %w %f" --exclude "${EXCLUDE_REGEX}" . |
-	while read -r event_time events directory filename; do
+	while read -r event_time _ directory filename; do
 		# ignore events older than STALE_EVENT_SECS second
 		if [[ $(($(date +%s) - $(date -d "${event_time}" +%s))) -ge ${STALE_EVENT_SECS} ]]; then
 			continue
@@ -62,10 +62,11 @@ inotifywait --event close_write --monitor --recursive --timefmt "%Y-%m-%dT%H:%M:
 			git check-ignore "${directory}/${filename}" >/dev/null 2>&1; then
 			continue
 		fi
-		cols=${COLUMNS:-$(tput cols)}
+		cols=${COLUMNS:-$(tput cols 2>/dev/null || echo 80)}
 		title=" minici "
 		padding=$(( (cols - ${#title}) / 2 ))
-		printf '%*s' $padding '' | tr ' ' =
+		[[ $padding -lt 0 ]] && padding=0
+		printf '%*s' "$padding" '' | tr ' ' =
 		printf '%s' "$title"
 		printf '%*s\n' $((cols - padding - ${#title})) '' | tr ' ' =
 		echo "${_BLUE}File changed:${_RESET} ${directory}${filename}"
