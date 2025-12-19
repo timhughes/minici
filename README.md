@@ -19,6 +19,7 @@ A simple file watcher and test runner for continuous integration during local de
 
 - `bash`
 - `inotify-tools` (provides `inotifywait`)
+- **Linux operating system** (inotify is Linux-specific and not available on macOS)
 
 ### Installing inotify-tools
 
@@ -37,10 +38,7 @@ sudo yum install inotify-tools
 sudo yum install https://archives.fedoraproject.org/pub/archive/epel/7/x86_64/Packages/i/inotify-tools-3.14-9.el7.x86_64.rpm
 ```
 
-**macOS:**
-```bash
-brew install inotify-tools
-```
+**Note for macOS users:** This script uses Linux's `inotify` system, which is not available on macOS. macOS uses FSEvents instead. Consider alternatives like [fswatch](https://github.com/emcrisostomo/fswatch) or [watchman](https://facebook.github.io/watchman/) for macOS file watching.
 
 ## Installation
 
