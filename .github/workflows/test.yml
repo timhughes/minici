@@ -9,22 +9,22 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y inotify-tools shellcheck
-    
+
     - name: Make scripts executable
       run: |
         chmod +x minici
         chmod +x test_minici.sh
-    
+
     - name: Run shellcheck
       run: shellcheck minici
-    
+
     - name: Run tests
       run: ./test_minici.sh

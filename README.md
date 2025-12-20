@@ -1,34 +1,40 @@
 # minici
 
-A simple file watcher and test runner for continuous integration during local development.
+A cross-platform file watcher and test runner for continuous integration during local development.
 
 ## Description
 
-`minici` is a lightweight bash script that monitors your project directory for file changes and automatically executes commands (like running tests) whenever changes are detected. It's designed to provide continuous feedback during development by automatically running your test suite or build process when you save files.
+`minici` is a lightweight bash script that monitors your project directory for file changes and automatically executes commands (like running tests) whenever changes are detected. It works on both Linux (using `inotifywait`) and macOS (using `fswatch`), providing continuous feedback during development by automatically running your test suite or build process when you save files.
 
 ## Features
 
-- 🔍 Watches for file changes using `inotifywait`
+- 🔍 **Cross-platform file watching** - Uses `inotifywait` on Linux, `fswatch` on macOS
 - 🚀 Automatically runs specified commands on file save
-- 🎯 Respects `.gitignore` patterns
+- 🎯 Respects `.gitignore` patterns dynamically
 - 📝 Filters out temporary files and common build artifacts
-- 🧹 Clears screen between runs for clean output
+- 🧹 Preserves output history for tracking changes
 - ⏱️ Debounces rapid file changes to avoid duplicate runs
+- 🎨 Colored output with centered header display
+- ❌ Error handling with exit code reporting
 
 ## Requirements
 
+### Linux
 - `bash`
 - `inotify-tools` (provides `inotifywait`)
-- **Linux operating system** (inotify is Linux-specific and not available on macOS)
 
-### Installing inotify-tools
+### macOS
+- `bash`
+- `fswatch`
 
-**Debian/Ubuntu:**
+### Installing Dependencies
+
+**Linux - Debian/Ubuntu:**
 ```bash
 sudo apt-get install inotify-tools
 ```
 
-**Fedora/RHEL/CentOS:**
+**Linux - Fedora/RHEL/CentOS:**
 ```bash
 sudo yum install inotify-tools
 ```
@@ -38,7 +44,12 @@ sudo yum install inotify-tools
 sudo yum install https://archives.fedoraproject.org/pub/archive/epel/7/x86_64/Packages/i/inotify-tools-3.14-9.el7.x86_64.rpm
 ```
 
-**Note for macOS users:** This script uses Linux's `inotify` system, which is not available on macOS. macOS uses FSEvents instead. Consider alternatives like [fswatch](https://github.com/emcrisostomo/fswatch) or [watchman](https://facebook.github.io/watchman/) for macOS file watching.
+**macOS:**
+```bash
+brew install fswatch
+```
+
+**Note:** The script automatically detects which file watcher is available and uses the appropriate one.
 
 ## Installation
 

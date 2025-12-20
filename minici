@@ -11,9 +11,10 @@
 #     ./minici pytest
 #
 #
-# inotify-tools for AL2 
-# 
+# inotify-tools for AL2
+#
 #    sudo yum install https://archives.fedoraproject.org/pub/archive/epel/7/x86_64/Packages/i/inotify-tools-3.14-9.el7.x86_64.rpm
+STALE_EVENT_SECS=1
 
 _GREEN=$(tput setaf 2 2>/dev/null || echo '')
 _BLUE=$(tput setaf 4 2>/dev/null || echo '')
@@ -38,68 +39,89 @@ if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
 	exit 1
 fi
 
-if ! command -v inotifywait >/dev/null 2>&1; then
-	echo "${_RED}inotify-tools is not installed${_RESET}" >&2
-	exit 1
-fi
-
 # Check if the command exists before starting to watch
 if ! command -v "$1" >/dev/null 2>&1; then
 	echo "${_RED}Command not found: $1${_RESET}" >&2
 	exit 1
 fi
 
-STALE_EVENT_SECS=1
+# Store the command to run
+COMMAND=("$@")
+
+# Detect available file watcher
+if command -v inotifywait >/dev/null 2>&1; then
+	WATCHER="inotify"
+elif command -v fswatch >/dev/null 2>&1; then
+	WATCHER="fswatch"
+else
+	echo "${_RED}No file watcher found. Install inotify-tools or fswatch${_RESET}" >&2
+	exit 1
+fi
 
 # Build exclude pattern from git and common patterns
 build_exclude_pattern() {
 	local patterns=""
 	local project_dir
 	project_dir=$(pwd)
-	
+
 	# Add git ignored files (with full paths)
 	if git rev-parse --git-dir >/dev/null 2>&1; then
 		local git_ignored
 		git_ignored=$(git check-ignore -- **/* 2>/dev/null | sed "s|^|^${project_dir}/|" | tr '\n' '|' || true)
 		patterns="${patterns}${git_ignored}"
 	fi
-	
+
 	# Add .git directory
 	patterns="${patterns}^${project_dir}/\.git/.*|"
-	
+
 	# Add common temp file patterns (with full paths)
 	patterns="${patterns}^${project_dir}/.*\.sw[px]*$|^${project_dir}/.*i\.log$|^${project_dir}/.*\.pytest_cache/.*|^${project_dir}/.*\.coverage.*"
-	
-	echo "${patterns%|}"  # Remove trailing |
-}
 
+	echo "${patterns%|}" # Remove trailing |
+}
 
 EXCLUDE_REGEX=$(build_exclude_pattern)
 
-inotifywait --event close_write --monitor --recursive --timefmt "%Y-%m-%dT%H:%M:%S" --format "%T %e %w %f" --exclude "${EXCLUDE_REGEX}" . |
-	while read -r event_time _ directory filename; do
-		# ignore events older than STALE_EVENT_SECS second
-		if [[ $(($(date +%s) - $(date -d "${event_time}" +%s))) -ge ${STALE_EVENT_SECS} ]]; then
-			continue
-		fi
-		if echo "$directory" | grep -q '^\./\.git.*' ||
-			git check-ignore "${directory}/${filename}" >/dev/null 2>&1; then
-			continue
-		fi
-		cols=${COLUMNS:-$(tput cols)}
-		title=" minici "
-		padding=$(( (cols - ${#title}) / 2 ))
-		[[ $padding -lt 0 ]] && padding=0
-		printf '%*s' "$padding" '' | tr ' ' =
-		printf '%s' "$title"
-		printf '%*s\n' $((cols - padding - ${#title})) '' | tr ' ' =
-		echo "${_BLUE}File changed:${_RESET} ${directory}${filename}"
-		echo "${_BLUE}Time:${_RESET} $(date -Iseconds)"
-		echo "${_GREEN}Running:${_RESET} $*"
-		printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
-		"$@"
-		exit_code=$?
-		if [[ $exit_code -ne 0 ]]; then
-			echo "${_RED}Command failed with exit code: $exit_code${_RESET}"
-		fi
-	done
+# Process file change events
+process_file_change() {
+	local event_time="$1"
+	local filepath="$2"
+	shift 2 # Remove event_time and filepath from $@
+
+	# ignore events older than STALE_EVENT_SECS second
+	if [[ $(($(date +%s) - $(date -d "${event_time}" +%s))) -ge ${STALE_EVENT_SECS} ]]; then
+		return
+	fi
+	if git check-ignore "${filepath}" >/dev/null 2>&1; then
+		return
+	fi
+	cols=${COLUMNS:-$(tput cols)}
+	title=" minici "
+	padding=$(((cols - ${#title}) / 2))
+	[[ $padding -lt 0 ]] && padding=0
+	printf '%*s' "$padding" '' | tr ' ' =
+	printf '%s' "$title"
+	printf '%*s\n' $((cols - padding - ${#title})) '' | tr ' ' =
+	echo "${_BLUE}File changed:${_RESET} ${filepath}"
+	echo "${_BLUE}Time:${_RESET} $(date -Iseconds)"
+	echo "${_GREEN}Running:${_RESET} ${COMMAND[*]}"
+	printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' =
+	"${COMMAND[@]}"
+	exit_code=$?
+	if [[ $exit_code -ne 0 ]]; then
+		echo "${_RED}Command failed with exit code: $exit_code${_RESET}"
+	fi
+}
+
+# Start appropriate file watcher
+if [[ "$WATCHER" == "inotify" ]]; then
+	inotifywait --event close_write --monitor --recursive --timefmt "%Y-%m-%dT%H:%M:%S" --format "%T %e %w%f" --exclude "${EXCLUDE_REGEX}" . |
+		while read -r event_time _ filepath; do
+			process_file_change "$event_time" "$filepath"
+		done
+else
+	fswatch --exclude="${EXCLUDE_REGEX}" --format-time "%Y-%m-%dT%H:%M:%S" --format '%t %e %p' --event Updated --recursive . |
+		while read -r event_time _ filepath; do
+			process_file_change "$event_time" "$filepath"
+		done
+fi
