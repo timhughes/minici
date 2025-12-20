@@ -17,3 +17,12 @@ repos:
     hooks:
       - id: shfmt
         args: [-w]
+
+  - repo: local
+    hooks:
+      - id: bats-tests
+        name: Run bats tests
+        entry: bats
+        language: system
+        files: \.bats$
+        args: [test_minici.bats]

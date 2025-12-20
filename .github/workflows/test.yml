@@ -16,15 +16,13 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y inotify-tools shellcheck
+        sudo apt-get install -y inotify-tools shellcheck bats
 
     - name: Make scripts executable
-      run: |
-        chmod +x minici
-        chmod +x test_minici.sh
+      run: chmod +x minici
 
     - name: Run shellcheck
       run: shellcheck minici
 
-    - name: Run tests
-      run: ./test_minici.sh
+    - name: Run bats tests
+      run: bats test_minici.bats
