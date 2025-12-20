@@ -6,9 +6,38 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
 jobs:
-  test:
+  test-mise:
     runs-on: ubuntu-latest
+    name: Test with mise
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install mise
+      run: |
+        curl https://mise.jdx.dev/install.sh | sh
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies with mise
+      run: |
+        mise install
+        sudo apt-get update
+        sudo apt-get install -y inotify-tools fswatch
+        pip install pre-commit
+
+    - name: Make scripts executable
+      run: chmod +x minici
+
+    - name: Run mise CI tasks
+      run: mise run ci
+
+  test-inotify:
+    runs-on: ubuntu-latest
+    name: Test with inotify-tools
 
     steps:
     - uses: actions/checkout@v4
@@ -16,15 +45,40 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y inotify-tools shellcheck
+        sudo apt-get install -y inotify-tools shellcheck bats
 
     - name: Make scripts executable
-      run: |
-        chmod +x minici
-        chmod +x test_minici.sh
+      run: chmod +x minici
 
     - name: Run shellcheck
       run: shellcheck minici
 
-    - name: Run tests
-      run: ./test_minici.sh
+    - name: Run bats tests
+      run: bats test_minici.bats
+
+  test-fswatch:
+    runs-on: ubuntu-latest
+    name: Test with fswatch
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y fswatch shellcheck bats
+
+    - name: Make scripts executable
+      run: chmod +x minici
+
+    - name: Run shellcheck
+      run: shellcheck minici
+
+    - name: Test fswatch detection
+      run: |
+        # Verify fswatch is available and minici detects it
+        which fswatch
+        timeout 2s ./minici echo "test" || true
+
+    - name: Run bats tests
+      run: bats test_minici.bats

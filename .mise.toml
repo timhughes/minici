@@ -1,0 +1,39 @@
+[tools]
+shellcheck = "latest"
+shfmt = "latest"
+bats = "latest"
+
+[env]
+PROJECT_NAME = "minici"
+
+[tasks.setup]
+description = "Install system dependencies and setup pre-commit"
+run = """
+if command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update && sudo apt-get install -y inotify-tools fswatch
+elif command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y inotify-tools fswatch
+elif command -v yum >/dev/null 2>&1; then
+    sudo yum install -y inotify-tools fswatch
+elif command -v brew >/dev/null 2>&1; then
+    brew install fswatch
+fi
+pip install pre-commit
+pre-commit install
+"""
+
+[tasks.test]
+description = "Run bats tests"
+run = "bats test_minici.bats"
+
+[tasks.lint]
+description = "Run shellcheck and shfmt"
+run = "shellcheck minici && shfmt -d minici"
+
+[tasks.format]
+description = "Format shell scripts"
+run = "shfmt -w minici"
+
+[tasks.ci]
+description = "Run all CI checks"
+run = "mise run lint && mise run test"
