@@ -50,7 +50,31 @@ if ! command -v "$1" >/dev/null 2>&1; then
 fi
 
 STALE_EVENT_SECS=1
-EXCLUDE_REGEX='^\..*\.sw[px]*$|.*i\.log$|spec/fixtures|_trial_temp*|.pytest_cache|.watchman-cookie|^build|.coverage.*|.attach_pid*|_apidoc'
+
+# Build exclude pattern from git and common patterns
+build_exclude_pattern() {
+	local patterns=""
+	local project_dir
+	project_dir=$(pwd)
+	
+	# Add git ignored files (with full paths)
+	if git rev-parse --git-dir >/dev/null 2>&1; then
+		local git_ignored
+		git_ignored=$(git check-ignore -- **/* 2>/dev/null | sed "s|^|^${project_dir}/|" | tr '\n' '|' || true)
+		patterns="${patterns}${git_ignored}"
+	fi
+	
+	# Add .git directory
+	patterns="${patterns}^${project_dir}/\.git/.*|"
+	
+	# Add common temp file patterns (with full paths)
+	patterns="${patterns}^${project_dir}/.*\.sw[px]*$|^${project_dir}/.*i\.log$|^${project_dir}/.*\.pytest_cache/.*|^${project_dir}/.*\.coverage.*"
+	
+	echo "${patterns%|}"  # Remove trailing |
+}
+
+
+EXCLUDE_REGEX=$(build_exclude_pattern)
 
 inotifywait --event close_write --monitor --recursive --timefmt "%Y-%m-%dT%H:%M:%S" --format "%T %e %w %f" --exclude "${EXCLUDE_REGEX}" . |
 	while read -r event_time _ directory filename; do
@@ -62,7 +86,7 @@ inotifywait --event close_write --monitor --recursive --timefmt "%Y-%m-%dT%H:%M:
 			git check-ignore "${directory}/${filename}" >/dev/null 2>&1; then
 			continue
 		fi
-		cols=${COLUMNS:-$(tput cols 2>/dev/null || echo 80)}
+		cols=${COLUMNS:-$(tput cols)}
 		title=" minici "
 		padding=$(( (cols - ${#title}) / 2 ))
 		[[ $padding -lt 0 ]] && padding=0
