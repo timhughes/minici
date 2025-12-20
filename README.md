@@ -19,15 +19,11 @@ A cross-platform file watcher and test runner for continuous integration during 
 
 ## Requirements
 
-### Linux
+### Runtime Dependencies
 - `bash`
-- `inotify-tools` (provides `inotifywait`)
+- `inotify-tools` (Linux) or `fswatch` (macOS)
 
-### macOS
-- `bash`
-- `fswatch`
-
-### Installing Dependencies
+### Installing Runtime Dependencies
 
 **Linux - Debian/Ubuntu:**
 ```bash
@@ -36,7 +32,7 @@ sudo apt-get install inotify-tools
 
 **Linux - Fedora/RHEL/CentOS:**
 ```bash
-sudo yum install inotify-tools
+sudo dnf install inotify-tools  # or: sudo yum install inotify-tools
 ```
 
 **Amazon Linux 2:**
@@ -142,3 +138,78 @@ Tim Hughes - <thughes@thegoldfish.org>
 ## Contributing
 
 Contributions are welcome! Feel free to submit issues or pull requests.
+
+## Development
+
+### Development Dependencies
+- `shellcheck` - Shell script linting
+- `shfmt` - Shell script formatting
+- `bats` - Bash testing framework
+- `pre-commit` - Git hooks framework
+
+### Quick Setup with mise
+
+The easiest way to set up the development environment is using [mise](https://mise.jdx.dev):
+
+```bash
+# Install mise
+curl https://mise.jdx.dev/install.sh | sh
+
+# Install all development tools and dependencies
+mise install
+mise run setup
+
+# Run tests
+mise run test
+
+# Run linting
+mise run lint
+
+# Format code
+mise run format
+```
+
+### Manual Development Setup
+
+**Linux - Debian/Ubuntu:**
+```bash
+sudo apt-get install shellcheck bats
+pip install pre-commit
+pre-commit install
+```
+
+**Linux - Fedora/RHEL/CentOS:**
+```bash
+sudo dnf install shellcheck bats  # or: sudo yum install shellcheck bats
+pip install pre-commit
+pre-commit install
+```
+
+**macOS:**
+```bash
+brew install shellcheck shfmt bats-core
+pip install pre-commit
+pre-commit install
+```
+
+### Running Tests
+
+```bash
+# With mise
+mise run test
+
+# Manual
+bats test_minici.bats
+```
+
+### Code Quality
+
+```bash
+# With mise
+mise run lint     # Check code quality
+mise run format   # Format code
+
+# Manual
+shellcheck minici
+shfmt -w minici
+```
